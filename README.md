@@ -1,0 +1,2 @@
+# ProjectRemover
+Visual Studio extension 
