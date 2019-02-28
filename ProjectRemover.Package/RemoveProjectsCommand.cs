@@ -48,6 +48,8 @@ namespace ProjectRemover.Package
             $"Project.*? = \".*?\", \"(.*?)\", \"{GUID_MATCH}.*?EndProject",
             RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
+
+
         /// <summary>
         /// In the.csproj files the referenced projects are specified in the following form:
         /// <ProjectReference Include ="[Path to csproj file]" >
@@ -128,7 +130,7 @@ namespace ProjectRemover.Package
                     return;
                 }
 
-                Dictionary<Guid, (string uniqueProjectName, string absoluteProjectPath)> unusedProjects = CheckSolutionFile(solution.FullName);
+                Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)> unusedProjects = CheckSolutionFile(solution.FullName);
 
                 if (unusedProjects == null ||
                     unusedProjects.Count == 0)
@@ -241,7 +243,7 @@ namespace ProjectRemover.Package
             return projects;
         }
 
-        private Dictionary<Guid, (string uniqueProjectName, string absoluteProjectPath)> CheckSolutionFile(string solutionFilePath)
+        private Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)> CheckSolutionFile(string solutionFilePath)
         {
             var directoryPath = Path.GetDirectoryName(solutionFilePath);
 
@@ -254,7 +256,7 @@ namespace ProjectRemover.Package
             var fileContent = File.ReadAllText(solutionFilePath);
             var referencedProjectsMatches = _referencedProjectsInSolutionRegex.Matches(fileContent);
 
-            var projectsInSolution = new Dictionary<Guid, (string relativeProjectPath, string absoluteProjectPath)>();
+            var projectsInSolution = new Dictionary<Guid, (string relativeProjectPath, FileInfo fileInfo)>();
 
             foreach (Match match in referencedProjectsMatches)
             {
@@ -271,12 +273,12 @@ namespace ProjectRemover.Package
 
                 var projectPath = Path.Combine(directoryPath, relativeFilePath);
 
-                projectsInSolution.Add(guid, (relativeFilePath, projectPath));
+                projectsInSolution.Add(guid, (relativeFilePath, new FileInfo(projectPath)));
             }
 
             // We add all projects to this collection and remove the ones which are needed. 
             // After that we have only the projects left, which can be removed.
-            var unusedProjects = new Dictionary<Guid, (string uniqueProjectName, string absoluteProjectPath)>();
+            var unusedProjects = new Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)>();
 
             foreach (var keyValuePair in projectsInSolution)
             {
@@ -287,7 +289,7 @@ namespace ProjectRemover.Package
             // Root projects are all projects which are saved in the folder of the .sln file or a subfolder from it.
             // We assume that projects, which are saved in a different location, are external projects which were
             // added to the solution.
-            var rootProjects = new Dictionary<Guid, (string uniqueProjectName, string absoluteProjectPath)>();
+            var rootProjects = new Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)>();
 
             foreach (var projectKeyValuePair in unusedProjects)
             {
@@ -304,7 +306,7 @@ namespace ProjectRemover.Package
                 // Root projects aren't removed.
                 unusedProjects.Remove(rootProjectKeyValuePair.Key);
 
-                bool wasSuccessful = RecursiveReferencedProjectCheck(rootProjectKeyValuePair.Value.absoluteProjectPath, unusedProjects);
+                bool wasSuccessful = RecursiveReferencedProjectCheck(rootProjectKeyValuePair.Value.fileInfo.FullName, unusedProjects);
 
                 if (!wasSuccessful)
                 {
@@ -317,7 +319,7 @@ namespace ProjectRemover.Package
 
         private bool RecursiveReferencedProjectCheck(
             string projectFilePath,
-            Dictionary<Guid, (string uniqueProjectName, string absoluteProjectPath)> unusedProjects)
+            Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)> unusedProjects)
         {
             if (!File.Exists(projectFilePath))
             {
@@ -332,15 +334,17 @@ namespace ProjectRemover.Package
 
             foreach (Match referencedProjectMatch in referencedProjectMatches)
             {
-                var referencedProjectGuidString = referencedProjectMatch.Groups[2].Value;
-                var referencedProjektGuid = Guid.Parse(referencedProjectGuidString);
+                // It turned out that the Project Guid does not match the guid in the solution in some projects (for the same project!).
+                // Therefore the complete path to the .csproj file is compared. This must be unique for each project.
+                var referencedProjectRelativePath = referencedProjectMatch.Groups[1].Value;
+                var currentProjectFileInfo = new FileInfo(Path.Combine(Path.GetDirectoryName(projectFilePath), referencedProjectRelativePath));
 
-                var searchedProject = unusedProjects.Where(p => p.Key == referencedProjektGuid).ToList();
+                var searchedProject = unusedProjects.Where(p => p.Value.fileInfo.FullName == currentProjectFileInfo.FullName).ToList();
 
                 if (searchedProject.Count > 0)
                 {
                     // Now check recursive if this project has any references.
-                    bool wasSuccessful = RecursiveReferencedProjectCheck(searchedProject[0].Value.absoluteProjectPath, unusedProjects);
+                    bool wasSuccessful = RecursiveReferencedProjectCheck(searchedProject[0].Value.fileInfo.FullName, unusedProjects);
 
                     if (!wasSuccessful)
                     {
