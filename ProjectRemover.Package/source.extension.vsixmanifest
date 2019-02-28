@@ -2,7 +2,7 @@
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
         <Identity Id="ProjectRemover.Package.986e070a-dcc3-4121-ad15-7c37ed599c9c" Version="1.0" Language="en-US" Publisher="Printcom GmbH" />
-        <DisplayName>ProjectRemover.Package</DisplayName>
+        <DisplayName>Visual Studio Project Remover</DisplayName>
         <Description xml:space="preserve">ProjectRemover is a Visual Studio extension, which removes unused projects included in a visual studio solution. The extension extends the context menu of the solution with a new function. After ProjectRemover is started, all messages are written to the output window.</Description>
         <MoreInfo>https://github.com/printcom/ProjectRemover</MoreInfo>
         <License>LICENSE</License>
