@@ -39,7 +39,10 @@ namespace ProjectRemover.Package
         private const string GUID_MATCH = "{([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})}";
 
         /// <summary>
-        /// 
+        /// In the .sln file the projects are linked as shown below. The project guid ist the
+        /// same as the guid in the project file.
+        /// Project("{9A11103F-16F1-4668-BE54-9A1E7A4F1556}") = "[Name]", "[Path]", "{[Project guid]}"
+        /// EndProject
         /// </summary>
         readonly Regex _referencedProjectsInSolutionRegex = new Regex(
             $"Project.*? = \".*?\", \"(.*?)\", \"{GUID_MATCH}.*?EndProject",
@@ -77,21 +80,14 @@ namespace ProjectRemover.Package
         /// <summary>
         /// Gets the instance of the command.
         /// </summary>
-        public static RemoveProjectsCommand Instance
-        {
-            get;
-            private set;
-        }
+        public static RemoveProjectsCommand Instance { get; private set; }
 
         /// <summary>
         /// Gets the service provider from the owner package.
         /// </summary>
         private Microsoft.VisualStudio.Shell.IAsyncServiceProvider ServiceProvider
         {
-            get
-            {
-                return _package;
-            }
+            get { return _package; }
         }
 
         /// <summary>
