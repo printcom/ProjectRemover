@@ -5,7 +5,7 @@
         <DisplayName>ProjectRemover.Package</DisplayName>
         <Description xml:space="preserve">ProjectRemover is a Visual Studio extension, which removes unused projects included in a visual studio solution. The extension extends the context menu of the solution with a new function. After ProjectRemover is started, all messages are written to the output window.</Description>
         <MoreInfo>https://github.com/printcom/ProjectRemover</MoreInfo>
-        <License>MIT</License>
+        <License>LICENSE</License>
         <Tags>Visual Studio, Projects</Tags>
     </Metadata>
     <Installation>
