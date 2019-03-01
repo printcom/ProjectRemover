@@ -117,19 +117,28 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="error_RemovingProjects" xml:space="preserve">
-    <value>-------- Error occurred while removing projects: --------</value>
+  <data name="error" xml:space="preserve">
+    <value>-------- Error --------</value>
   </data>
   <data name="info_FinishedProjectRemover" xml:space="preserve">
     <value>-------- Finished Project Remover --------</value>
   </data>
+  <data name="info_NoUnusedProjectFound" xml:space="preserve">
+    <value>No unused project found.</value>
+  </data>
   <data name="info_RemovedProjects" xml:space="preserve">
-    <value>-------- Successfully removed {0} Projects: --------{1}</value>
+    <value>Successfully removed {0} Projects:{1}</value>
   </data>
   <data name="info_StartingProjectRemover" xml:space="preserve">
     <value>-------- Starting Project Remover --------</value>
   </data>
+  <data name="warning" xml:space="preserve">
+    <value>-------- Warning --------</value>
+  </data>
+  <data name="warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection" xml:space="preserve">
+    <value>Could not delete the project [{0}] from the GlobalSection(TeamFoundationVersionControl) in the solution file.</value>
+  </data>
   <data name="warning_RemoveProjectsWhileBuilding" xml:space="preserve">
-    <value>-------- Cannot remove Projects while building. --------</value>
+    <value> Cannot remove Projects while building.</value>
   </data>
 </root>

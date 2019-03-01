@@ -6,7 +6,6 @@ using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -44,11 +43,9 @@ namespace ProjectRemover.Package
         /// Project("{9A11103F-16F1-4668-BE54-9A1E7A4F1556}") = "[Name]", "[Path]", "{[Project guid]}"
         /// EndProject
         /// </summary>
-        readonly Regex _referencedProjectsInSolutionRegex = new Regex(
+        private readonly Regex _referencedProjectsInSolutionRegex = new Regex(
             $"Project.*? = \".*?\", \"(.*?)\", \"{GUID_MATCH}.*?EndProject",
             RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
-
-
 
         /// <summary>
         /// In the.csproj files the referenced projects are specified in the following form:
@@ -59,9 +56,11 @@ namespace ProjectRemover.Package
         ///        
         /// The Guid is the same as the Guid in the.sln file.
         /// </summary>
-        readonly Regex _projectReferenceRegex = new Regex(
+        private readonly Regex _projectReferenceRegex = new Regex(
             $"<ProjectReference Include=\"(.*?)\">\\s*<Project>{GUID_MATCH}<\\/Project>",
             RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        private readonly Regex _numberOfProjectsInSolutionRegex = new Regex("SccNumberOfProjects = ([0-9]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RemoveProjectsCommand"/> class.
@@ -130,62 +129,36 @@ namespace ProjectRemover.Package
                     return;
                 }
 
-                Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)> unusedProjects = CheckSolutionFile(solution.FullName);
+                Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)> unusedProjects = CheckSolutionFile(solution.FullName);
 
                 if (unusedProjects == null ||
                     unusedProjects.Count == 0)
                 {
-                    // 
+                    WriteToBuildOutputWindow(Strings.info_NoUnusedProjectFound);
                     return;
-                }
-
-                var projectEnumerator = solution.Projects.GetEnumerator();
-                var allProjectsInSolution = new List<Project>();
-
-                while (projectEnumerator.MoveNext())
-                {
-                    if (projectEnumerator.Current is Project project)
-                    {
-                        if (project.Kind == ProjectKinds.vsProjectKindSolutionFolder)
-                        {
-                            allProjectsInSolution.AddRange(GetProjectsInSolutionFolderRecursive(project));
-                        }
-                        else
-                        {
-                            allProjectsInSolution.Add(project);
-                        }
-                    }
                 }
 
                 StringBuilder resultText = new StringBuilder();
                 int removedProjectsIndex = 0;
+                var solutionFileContent = File.ReadAllText(solution.FullName);
 
-                foreach (var project in allProjectsInSolution.ToList())
+                foreach (var unusedProject in unusedProjects)
                 {
-                    foreach (var unusedProject in unusedProjects)
-                    {
-                        if (project.UniqueName == unusedProject.Value.uniqueProjectName)
-                        {
-                            resultText.Append(++removedProjectsIndex + ". " + project.Name);
-                            resultText.AppendLine();
+                    solutionFileContent = RemoveProjectFromSolutionFile(solutionFileContent, unusedProject.Key, unusedProject.Value.projectRelativePath);
 
-                            solution.Remove(project);
-
-                            // Don't need to check this project again -> remove.
-                            unusedProjects.Remove(unusedProject.Key);
-
-                            break;
-                        }
-                    }
+                    resultText.Append(++removedProjectsIndex + ". " + unusedProject.Value.fileInfo.FullName);
+                    resultText.AppendLine();
                 }
+
+                // The file is not locked, so we can override ist.
+                File.WriteAllText(solution.FullName, RemoveEmptyLines(solutionFileContent));
 
                 resultText.Insert(0, string.Format(Strings.info_RemovedProjects, removedProjectsIndex, Environment.NewLine));
                 WriteToBuildOutputWindow(resultText.ToString());
-
             }
             catch (Exception ex)
             {
-                WriteToBuildOutputWindow(Strings.error_RemovingProjects);
+                WriteToBuildOutputWindow(Strings.error);
                 WriteToBuildOutputWindow(ex.Message);
             }
             finally
@@ -214,36 +187,7 @@ namespace ProjectRemover.Package
             }
         }
 
-        private IEnumerable<Project> GetProjectsInSolutionFolderRecursive(Project solutionFolder)
-        {
-            Debug.Assert(solutionFolder.Kind == ProjectKinds.vsProjectKindSolutionFolder, "Incorrect Project type.");
-
-            List<Project> projects = new List<Project>();
-
-            for (var i = 1; i <= solutionFolder.ProjectItems.Count; i++)
-            {
-                var subProject = solutionFolder.ProjectItems.Item(i).SubProject;
-
-                if (subProject == null)
-                {
-                    continue;
-                }
-
-                // A solution folder has a unique Kind. Recursive check all projects inside.
-                if (subProject.Kind == ProjectKinds.vsProjectKindSolutionFolder)
-                {
-                    projects.AddRange(GetProjectsInSolutionFolderRecursive(subProject));
-                }
-                else
-                {
-                    projects.Add(subProject);
-                }
-            }
-
-            return projects;
-        }
-
-        private Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)> CheckSolutionFile(string solutionFilePath)
+        private Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)> CheckSolutionFile(string solutionFilePath)
         {
             var directoryPath = Path.GetDirectoryName(solutionFilePath);
 
@@ -278,7 +222,7 @@ namespace ProjectRemover.Package
 
             // We add all projects to this collection and remove the ones which are needed. 
             // After that we have only the projects left, which can be removed.
-            var unusedProjects = new Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)>();
+            var unusedProjects = new Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)>();
 
             foreach (var keyValuePair in projectsInSolution)
             {
@@ -289,11 +233,11 @@ namespace ProjectRemover.Package
             // Root projects are all projects which are saved in the folder of the .sln file or a subfolder from it.
             // We assume that projects, which are saved in a different location, are external projects which were
             // added to the solution.
-            var rootProjects = new Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)>();
+            var rootProjects = new Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)>();
 
             foreach (var projectKeyValuePair in unusedProjects)
             {
-                if (projectKeyValuePair.Value.uniqueProjectName.StartsWith(@"..\"))
+                if (projectKeyValuePair.Value.projectRelativePath.StartsWith(@"..\"))
                 {
                     continue;
                 }
@@ -356,6 +300,86 @@ namespace ProjectRemover.Package
             }
 
             return true;
+        }
+
+        private string RemoveProjectFromSolutionFile(string solutionFileContent, Guid projectGuid, string projectRelativePath)
+        {
+            // Remove the project reference.
+            solutionFileContent = Regex.Replace(solutionFileContent, $"Project.*{projectGuid}" + "}\"" + @"[\n\r\s]+EndProject", string.Empty, RegexOptions.IgnoreCase);
+
+            // Remove the build configuration for this project.
+            solutionFileContent = Regex.Replace(solutionFileContent, "{" + projectGuid + "}.*\\|Any CPU", string.Empty, RegexOptions.IgnoreCase);
+
+            // Remove this project from the solution folder.
+            solutionFileContent = Regex.Replace(solutionFileContent, "{" + projectGuid + "} = " + $"{GUID_MATCH}", string.Empty, RegexOptions.IgnoreCase);
+
+            // If this project is linked with tfs, we have to delete some extra entries.
+            if (Regex.IsMatch(solutionFileContent, @"GlobalSection\(TeamFoundationVersionControl\)", RegexOptions.IgnoreCase | RegexOptions.Compiled))
+            {
+                var numberOfProjects = int.Parse(_numberOfProjectsInSolutionRegex.Match(solutionFileContent).Groups[1].Value);
+
+                // Every project has it's own id which is written after the name.
+                // The SccProjectUniqueName is the same as the relative path but with two "\" instead of one.
+                // The one will be replaced with four because of the regex.
+                var currentProjectNumberRegex = new Regex($"SccProjectUniqueName([0-9]+) = {projectRelativePath.Replace(@"\", @"\\\\")}");
+
+                if (!int.TryParse(currentProjectNumberRegex.Match(solutionFileContent).Groups[1].Value, out int currentProjectNumber))
+                {
+                    WriteToBuildOutputWindow(Strings.warning);
+                    WriteToBuildOutputWindow(Strings.warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection);
+
+                    return solutionFileContent;
+                }
+
+                // Remove all entries for this project.
+                solutionFileContent = Regex.Replace(solutionFileContent, $"SccProjectUniqueName{currentProjectNumber} = .*", string.Empty, RegexOptions.IgnoreCase);
+                solutionFileContent = Regex.Replace(solutionFileContent, $"SccProjectTopLevelParentUniqueName{currentProjectNumber} = .*", string.Empty, RegexOptions.IgnoreCase);
+                solutionFileContent = Regex.Replace(solutionFileContent, $"SccProjectName{currentProjectNumber} = .*", string.Empty, RegexOptions.IgnoreCase);
+                solutionFileContent = Regex.Replace(solutionFileContent, $"SccLocalPath{currentProjectNumber} = .*", string.Empty, RegexOptions.IgnoreCase);
+
+                // We need to change the number of all following projects. Otherwise we would get a warning when the solution is loaded,
+                // that a project is missing.
+                for (int i = currentProjectNumber + 1; i < numberOfProjects; i++)
+                {
+                    solutionFileContent = Regex.Replace(solutionFileContent, $"SccProjectUniqueName{i}", $"SccProjectUniqueName{i - 1}", RegexOptions.IgnoreCase);
+                    solutionFileContent = Regex.Replace(solutionFileContent, $"SccProjectTopLevelParentUniqueName{i}", $"SccProjectTopLevelParentUniqueName{i - 1}", RegexOptions.IgnoreCase);
+                    solutionFileContent = Regex.Replace(solutionFileContent, $"SccProjectName{i}", $"SccProjectName{i - 1}", RegexOptions.IgnoreCase);
+                    solutionFileContent = Regex.Replace(solutionFileContent, $"SccLocalPath{i}", $"SccLocalPath{i - 1}", RegexOptions.IgnoreCase);
+                }
+
+                // We removed one project so we need to decrease the the SccNumberOfProjects.
+                solutionFileContent = Regex.Replace(solutionFileContent, $"SccNumberOfProjects = {numberOfProjects}", $"SccNumberOfProjects = {numberOfProjects - 1}", RegexOptions.IgnoreCase);
+            }
+
+            return solutionFileContent;
+        }
+
+        /// <summary>
+        /// Removes the empty lines in the content of the file. 
+        /// </summary>
+        private string RemoveEmptyLines(string content)
+        {
+            // Remove the empty lines.
+            var splitContent = content.Split(Environment.NewLine.ToCharArray()).ToList();
+            StringBuilder splitContentBuilder = new StringBuilder();
+
+            foreach (var line in splitContent)
+            {
+                // Sometimes lines only contain "\t\t" and nothing else.
+                // These lines are empty too.
+                if (string.IsNullOrEmpty(line) ||
+                    line == "\t\t")
+                {
+                    continue;
+                }
+
+                splitContentBuilder.Append(line);
+
+                // We removed the line breaks. Add a new one after each line.
+                splitContentBuilder.AppendLine();
+            }
+
+            return splitContentBuilder.ToString();
         }
 
         #endregion Private Methods

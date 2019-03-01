@@ -61,11 +61,11 @@ namespace ProjectRemover.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to -------- Error occurred while removing projects: --------.
+        ///   Looks up a localized string similar to -------- Error --------.
         /// </summary>
-        internal static string error_RemovingProjects {
+        internal static string error {
             get {
-                return ResourceManager.GetString("error_RemovingProjects", resourceCulture);
+                return ResourceManager.GetString("error", resourceCulture);
             }
         }
         
@@ -79,7 +79,16 @@ namespace ProjectRemover.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to -------- Successfully removed {0} Projects: --------{1}.
+        ///   Looks up a localized string similar to No unused project found..
+        /// </summary>
+        internal static string info_NoUnusedProjectFound {
+            get {
+                return ResourceManager.GetString("info_NoUnusedProjectFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Successfully removed {0} Projects:{1}.
         /// </summary>
         internal static string info_RemovedProjects {
             get {
@@ -97,7 +106,25 @@ namespace ProjectRemover.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to -------- Cannot remove Projects while building. --------.
+        ///   Looks up a localized string similar to -------- Warning --------.
+        /// </summary>
+        internal static string warning {
+            get {
+                return ResourceManager.GetString("warning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not delete the project [{0}] from the GlobalSection(TeamFoundationVersionControl) in the solution file..
+        /// </summary>
+        internal static string warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection {
+            get {
+                return ResourceManager.GetString("warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to  Cannot remove Projects while building..
         /// </summary>
         internal static string warning_RemoveProjectsWhileBuilding {
             get {
