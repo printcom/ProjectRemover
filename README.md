@@ -4,7 +4,7 @@
 ProjectRemover is a Visual Studio extension, which removes unused projects included in a visual studio solution. 
 The extension extends the context menu of the solution with a new function. 
 
-![Context](./Images/Context menu.png)
+![Context](./Images/Context%20menu.png)
 
 After ProjectRemover is started, all messages are written to the output window.
 
