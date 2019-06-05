@@ -130,7 +130,10 @@
     <value>No unused project found.</value>
   </data>
   <data name="info_RemovedProjects" xml:space="preserve">
-    <value>Successfully removed {0} Projects:{1}</value>
+    <value>Successfully removed {0} Projects and {1} solution folders:{2}</value>
+  </data>
+  <data name="info_RemovedSolutionsFolders" xml:space="preserve">
+    <value>Removed solution folders</value>
   </data>
   <data name="info_StartingProjectRemover" xml:space="preserve">
     <value>-------- Starting Project Remover --------</value>
@@ -138,11 +141,14 @@
   <data name="txt_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="txt_DeleteEmptySolutionFolders" xml:space="preserve">
+    <value>Delete empty solution folders</value>
+  </data>
   <data name="txt_Remove" xml:space="preserve">
     <value>Remove</value>
   </data>
   <data name="txt_SelectProjects" xml:space="preserve">
-    <value>Select the projects which should be removed</value>
+    <value>Select the projects to be removed</value>
   </data>
   <data name="warning" xml:space="preserve">
     <value>-------- Warning --------</value>

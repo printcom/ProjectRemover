@@ -131,7 +131,7 @@ namespace ProjectRemover.Package
                     return;
                 }
 
-                Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)> unusedProjects = GetUnusedProjects(solution.FullName);
+                Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)> unusedProjects = GetUnusedProjects(solution.FullName, out Dictionary<Guid, string> solutionFolderNames);
 
                 if (unusedProjects == null ||
                     unusedProjects.Count == 0)
@@ -174,16 +174,35 @@ namespace ProjectRemover.Package
                         continue;
                     }
 
-                    solutionFileContent = RemoveProjectFromSolutionFile(solutionFileContent, removableProject.Id, removableProject.RelativePath);
+                    solutionFileContent = RemoveItemFromSolutionFile(solutionFileContent, removableProject.Id, true, removableProject.RelativePath);
 
-                    resultText.Append(++removedProjectsIndex + ". " + removableProject.FullPath);
+                    resultText.Append($"{++removedProjectsIndex}. {removableProject.NestedPath}{removableProject.Name}");
                     resultText.AppendLine();
+                }
+
+                int removedSolutionFolders = 0;
+
+                if (removeProjectsWindow.ViewModel.DeleteEmptySolutionFolders)
+                {
+                    resultText.AppendLine();
+                    resultText.Append(Strings.info_RemovedSolutionsFolders);
+                    resultText.AppendLine();
+
+                    int solutionFoldersCount = solutionFolderNames.Count;
+
+                    solutionFileContent = DeleteEmptySolutionFolders(solutionFileContent, solutionFolderNames, resultText);
+                    removedSolutionFolders = solutionFoldersCount - solutionFolderNames.Count;
+                }
+                else if (removedProjectsIndex == 0)
+                {
+                    // No project was removed.
+                    return;
                 }
 
                 // The file is not locked, so we can override ist.
                 File.WriteAllText(solution.FullName, RemoveEmptyLines(solutionFileContent));
 
-                resultText.Insert(0, string.Format(Strings.info_RemovedProjects, removedProjectsIndex, Environment.NewLine));
+                resultText.Insert(0, string.Format(Strings.info_RemovedProjects, removedProjectsIndex, removedSolutionFolders, Environment.NewLine));
                 WriteToBuildOutputWindow(resultText.ToString());
             }
             catch (Exception ex)
@@ -217,8 +236,9 @@ namespace ProjectRemover.Package
             }
         }
 
-        private Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)> GetUnusedProjects(string solutionFilePath)
+        private Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)> GetUnusedProjects(string solutionFilePath, out Dictionary<Guid, string> solutionFolderNames)
         {
+            solutionFolderNames = new Dictionary<Guid, string>();
             var directoryPath = Path.GetDirectoryName(solutionFilePath);
 
             if (directoryPath == null ||
@@ -231,7 +251,6 @@ namespace ProjectRemover.Package
             var referencedProjectsMatches = _referencedProjectsInSolutionRegex.Matches(fileContent);
 
             var projectsInSolution = new Dictionary<Guid, (string relativeProjectPath, FileInfo fileInfo)>();
-            var solutionItemNames = new Dictionary<Guid, string>();
 
             foreach (Match match in referencedProjectsMatches)
             {
@@ -240,11 +259,11 @@ namespace ProjectRemover.Package
 
                 Guid guid = Guid.Parse(guidValue);
 
-                // The first match is the name of the solution folder or project
-                solutionItemNames[guid] = match.Groups[1].Value;
-
                 if (!relativeFilePath.EndsWith(".csproj"))
                 {
+                    // The first match is the name of the solution folder or project
+                    solutionFolderNames[guid] = match.Groups[1].Value;
+
                     // No project. Has to be a solution folder which we don't wanna check.
                     continue;
                 }
@@ -260,7 +279,7 @@ namespace ProjectRemover.Package
 
             foreach (var keyValuePair in projectsInSolution)
             {
-                var nestedProjectPath = GetNestedProjectPath(fileContent, keyValuePair.Key, solutionItemNames);
+                var nestedProjectPath = GetNestedProjectPath(fileContent, keyValuePair.Key, solutionFolderNames);
                 nestedProjectPath += "/";
 
                 unusedProjects.Add(keyValuePair.Key, (keyValuePair.Value.relativeProjectPath, nestedProjectPath, keyValuePair.Value.fileInfo));
@@ -361,19 +380,19 @@ namespace ProjectRemover.Package
             return true;
         }
 
-        private string RemoveProjectFromSolutionFile(string solutionFileContent, Guid projectGuid, string projectRelativePath)
+        private string RemoveItemFromSolutionFile(string solutionFileContent, Guid itemGuid, bool isProject, string projectRelativePath)
         {
             // Remove the project reference.
-            solutionFileContent = Regex.Replace(solutionFileContent, $"Project.*{projectGuid}" + "}\"" + @"[\n\r\s]+EndProject", string.Empty, RegexOptions.IgnoreCase);
+            solutionFileContent = Regex.Replace(solutionFileContent, $"Project.*{itemGuid}" + "}\"" + @"[\n\r\s]+EndProject", string.Empty, RegexOptions.IgnoreCase);
 
             // Remove the build configuration for this project.
-            solutionFileContent = Regex.Replace(solutionFileContent, "{" + projectGuid + "}.*\\|Any CPU", string.Empty, RegexOptions.IgnoreCase);
+            solutionFileContent = Regex.Replace(solutionFileContent, "{" + itemGuid + "}.*\\|Any CPU", string.Empty, RegexOptions.IgnoreCase);
 
             // Remove this project from the solution folder.
-            solutionFileContent = Regex.Replace(solutionFileContent, "{" + projectGuid + "} = " + $"{GUID_MATCH}", string.Empty, RegexOptions.IgnoreCase);
+            solutionFileContent = Regex.Replace(solutionFileContent, "{" + itemGuid + "} = " + $"{GUID_MATCH}", string.Empty, RegexOptions.IgnoreCase);
 
             // If this project is linked with tfs, we have to delete some extra entries.
-            if (Regex.IsMatch(solutionFileContent, @"GlobalSection\(TeamFoundationVersionControl\)", RegexOptions.IgnoreCase | RegexOptions.Compiled))
+            if (isProject && Regex.IsMatch(solutionFileContent, @"GlobalSection\(TeamFoundationVersionControl\)", RegexOptions.IgnoreCase | RegexOptions.Compiled))
             {
                 var numberOfProjects = int.Parse(_numberOfProjectsInSolutionRegex.Match(solutionFileContent).Groups[1].Value);
 
@@ -408,6 +427,36 @@ namespace ProjectRemover.Package
 
                 // We removed one project so we need to decrease the the SccNumberOfProjects.
                 solutionFileContent = Regex.Replace(solutionFileContent, $"SccNumberOfProjects = {numberOfProjects}", $"SccNumberOfProjects = {numberOfProjects - 1}", RegexOptions.IgnoreCase);
+            }
+
+            return solutionFileContent;
+        }
+
+        private string DeleteEmptySolutionFolders(string solutionFileContent, Dictionary<Guid, string> solutionFolderNames, StringBuilder outputInfoBuilder)
+        {
+            bool removedSolutionFolder = false;
+
+            foreach (var solutionFolderValuePair in solutionFolderNames.ToList())
+            {
+                // Check if there is still a Item in this solution folder
+                Regex nestedItemRegex = new Regex($"{GUID_MATCH} = " + "{" + solutionFolderValuePair.Key + "}", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+                if (!nestedItemRegex.IsMatch(solutionFileContent))
+                {
+                    solutionFileContent = RemoveItemFromSolutionFile(solutionFileContent, solutionFolderValuePair.Key, false, null);
+                    removedSolutionFolder = true;
+                    solutionFolderNames.Remove(solutionFolderValuePair.Key);
+                    outputInfoBuilder.Append(solutionFolderValuePair.Value);
+                    outputInfoBuilder.AppendLine();
+                }
+            }
+
+            if (removedSolutionFolder)
+            {
+                // If a solution folder was removed, we have to check all other folders again.
+                // It's possible that the removed folder was the last item in an other folder.
+                // So this folder is now empty and can be removed too.
+                solutionFileContent = DeleteEmptySolutionFolders(solutionFileContent, solutionFolderNames, outputInfoBuilder);
             }
 
             return solutionFileContent;

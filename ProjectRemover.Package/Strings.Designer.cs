@@ -97,11 +97,20 @@ namespace ProjectRemover.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Successfully removed {0} Projects:{1}.
+        ///   Looks up a localized string similar to Successfully removed {0} Projects and {1} solution folders:{2}.
         /// </summary>
         public static string info_RemovedProjects {
             get {
                 return ResourceManager.GetString("info_RemovedProjects", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed solution folders.
+        /// </summary>
+        public static string info_RemovedSolutionsFolders {
+            get {
+                return ResourceManager.GetString("info_RemovedSolutionsFolders", resourceCulture);
             }
         }
         
@@ -124,6 +133,15 @@ namespace ProjectRemover.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Delete empty solution folders.
+        /// </summary>
+        public static string txt_DeleteEmptySolutionFolders {
+            get {
+                return ResourceManager.GetString("txt_DeleteEmptySolutionFolders", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Remove.
         /// </summary>
         public static string txt_Remove {
@@ -133,7 +151,7 @@ namespace ProjectRemover.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Select the projects which should be removed.
+        ///   Looks up a localized string similar to Select the projects to be removed.
         /// </summary>
         public static string txt_SelectProjects {
             get {

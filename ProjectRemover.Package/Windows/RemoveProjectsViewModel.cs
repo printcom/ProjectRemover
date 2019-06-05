@@ -24,6 +24,8 @@ namespace ProjectRemover.Package.Windows
 
         public ObservableCollection<RemovableProject> RemovableProjects { get; set; } = new ObservableCollection<RemovableProject>();
 
+        public bool DeleteEmptySolutionFolders { get; set; } = true;
+
         #endregion Bindings
 
         #region Commands

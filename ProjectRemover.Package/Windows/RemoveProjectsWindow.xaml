@@ -32,6 +32,7 @@
                    FontFamily="Courier"
                    FontSize="18"
                    Text="{x:Static package:Strings.txt_SelectProjects}" />
+        <Separator />
         <ItemsControl MaxHeight="300" ItemsSource="{Binding Path=RemovableProjects}">
             <ItemsControl.Template>
                 <ControlTemplate>
@@ -59,6 +60,10 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <Separator />
+        <CheckBox Margin="5"
+                  Content="{x:Static package:Strings.txt_DeleteEmptySolutionFolders}"
+                  IsChecked="{Binding Path=DeleteEmptySolutionFolders}" />
 
         <StackPanel Margin="5 5 0 0"
                     HorizontalAlignment="Right"
