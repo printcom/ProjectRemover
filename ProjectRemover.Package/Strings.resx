@@ -120,6 +120,9 @@
   <data name="error" xml:space="preserve">
     <value>-------- Error --------</value>
   </data>
+  <data name="info_CanceledByUser" xml:space="preserve">
+    <value>The operation was canceled by the user.</value>
+  </data>
   <data name="info_FinishedProjectRemover" xml:space="preserve">
     <value>-------- Finished Project Remover --------</value>
   </data>
@@ -131,6 +134,15 @@
   </data>
   <data name="info_StartingProjectRemover" xml:space="preserve">
     <value>-------- Starting Project Remover --------</value>
+  </data>
+  <data name="txt_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="txt_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="txt_SelectProjects" xml:space="preserve">
+    <value>Select the projects which should be removed</value>
   </data>
   <data name="warning" xml:space="preserve">
     <value>-------- Warning --------</value>

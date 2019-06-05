@@ -10,6 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using ProjectRemover.Package.Classes;
+using ProjectRemover.Package.Windows;
 using Task = System.Threading.Tasks.Task;
 
 namespace ProjectRemover.Package
@@ -44,7 +46,7 @@ namespace ProjectRemover.Package
         /// EndProject
         /// </summary>
         private readonly Regex _referencedProjectsInSolutionRegex = new Regex(
-            $"Project.*? = \".*?\", \"(.*?)\", \"{GUID_MATCH}.*?EndProject",
+            $"Project.*? = \"(.*?)\", \"(.*?)\", \"{GUID_MATCH}.*?EndProject",
             RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
         /// <summary>
@@ -129,7 +131,7 @@ namespace ProjectRemover.Package
                     return;
                 }
 
-                Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)> unusedProjects = CheckSolutionFile(solution.FullName);
+                Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)> unusedProjects = GetUnusedProjects(solution.FullName);
 
                 if (unusedProjects == null ||
                     unusedProjects.Count == 0)
@@ -138,15 +140,43 @@ namespace ProjectRemover.Package
                     return;
                 }
 
+                RemoveProjectsWindow removeProjectsWindow = new RemoveProjectsWindow();
+
+                foreach (var unusedProject in unusedProjects)
+                {
+                    removeProjectsWindow.ViewModel.RemovableProjects.Add(new RemovableProject
+                    {
+                        Id = unusedProject.Key,
+                        Name = unusedProject.Value.fileInfo.Name,
+                        RelativePath = unusedProject.Value.projectRelativePath,
+                        FullPath = unusedProject.Value.fileInfo.FullName,
+                        NestedPath = unusedProject.Value.nestedProjectPath,
+                        Remove = true
+                    });
+                }
+
+                removeProjectsWindow.ShowDialog();
+
+                if (removeProjectsWindow.ViewModel.IsCanceled)
+                {
+                    WriteToBuildOutputWindow(Strings.info_CanceledByUser);
+                    return;
+                }
+
                 StringBuilder resultText = new StringBuilder();
                 int removedProjectsIndex = 0;
                 var solutionFileContent = File.ReadAllText(solution.FullName);
 
-                foreach (var unusedProject in unusedProjects)
+                foreach (var removableProject in removeProjectsWindow.ViewModel.RemovableProjects)
                 {
-                    solutionFileContent = RemoveProjectFromSolutionFile(solutionFileContent, unusedProject.Key, unusedProject.Value.projectRelativePath);
+                    if (!removableProject.Remove)
+                    {
+                        continue;
+                    }
 
-                    resultText.Append(++removedProjectsIndex + ". " + unusedProject.Value.fileInfo.FullName);
+                    solutionFileContent = RemoveProjectFromSolutionFile(solutionFileContent, removableProject.Id, removableProject.RelativePath);
+
+                    resultText.Append(++removedProjectsIndex + ". " + removableProject.FullPath);
                     resultText.AppendLine();
                 }
 
@@ -187,7 +217,7 @@ namespace ProjectRemover.Package
             }
         }
 
-        private Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)> CheckSolutionFile(string solutionFilePath)
+        private Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)> GetUnusedProjects(string solutionFilePath)
         {
             var directoryPath = Path.GetDirectoryName(solutionFilePath);
 
@@ -201,13 +231,17 @@ namespace ProjectRemover.Package
             var referencedProjectsMatches = _referencedProjectsInSolutionRegex.Matches(fileContent);
 
             var projectsInSolution = new Dictionary<Guid, (string relativeProjectPath, FileInfo fileInfo)>();
+            var solutionItemNames = new Dictionary<Guid, string>();
 
             foreach (Match match in referencedProjectsMatches)
             {
-                var relativeFilePath = match.Groups[1].Value;
-                var guidValue = match.Groups[2].Value;
+                var relativeFilePath = match.Groups[2].Value;
+                var guidValue = match.Groups[3].Value;
 
                 Guid guid = Guid.Parse(guidValue);
+
+                // The first match is the name of the solution folder or project
+                solutionItemNames[guid] = match.Groups[1].Value;
 
                 if (!relativeFilePath.EndsWith(".csproj"))
                 {
@@ -222,18 +256,21 @@ namespace ProjectRemover.Package
 
             // We add all projects to this collection and remove the ones which are needed. 
             // After that we have only the projects left, which can be removed.
-            var unusedProjects = new Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)>();
+            var unusedProjects = new Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)>();
 
             foreach (var keyValuePair in projectsInSolution)
             {
-                unusedProjects.Add(keyValuePair.Key, keyValuePair.Value);
+                var nestedProjectPath = GetNestedProjectPath(fileContent, keyValuePair.Key, solutionItemNames);
+                nestedProjectPath += "/";
+
+                unusedProjects.Add(keyValuePair.Key, (keyValuePair.Value.relativeProjectPath, nestedProjectPath, keyValuePair.Value.fileInfo));
             }
 
             // Now we need to define the root projects from which we start to check which projects they reference.
             // Root projects are all projects which are saved in the folder of the .sln file or a subfolder from it.
             // We assume that projects, which are saved in a different location, are external projects which were
             // added to the solution.
-            var rootProjects = new Dictionary<Guid, (string projectRelativePath, FileInfo fileInfo)>();
+            var rootProjects = new Dictionary<Guid, (string projectRelativePath, string nestedProjectPath, FileInfo fileInfo)>();
 
             foreach (var projectKeyValuePair in unusedProjects)
             {
@@ -261,9 +298,31 @@ namespace ProjectRemover.Package
             return unusedProjects;
         }
 
+        private string GetNestedProjectPath(string solutionFileContent, Guid guid, Dictionary<Guid, string> solutionFolderNames)
+        {
+            string nestedPath = string.Empty;
+
+            Regex nestedProjectRegex = new Regex("{" + guid + "} = " + GUID_MATCH, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            var match = nestedProjectRegex.Match(solutionFileContent);
+
+            if (match.Success &&
+                match.Groups.Count > 1 &&
+                Guid.TryParse(match.Groups[1].Value, out Guid solutionFolderGuid))
+            {
+                if (solutionFolderNames.ContainsKey(solutionFolderGuid))
+                {
+                    nestedPath = solutionFolderNames[solutionFolderGuid];
+                }
+
+                nestedPath = GetNestedProjectPath(solutionFileContent, solutionFolderGuid, solutionFolderNames) + $"/{nestedPath}";
+            }
+
+            return nestedPath;
+        }
+
         private bool RecursiveReferencedProjectCheck(
             string projectFilePath,
-            Dictionary<Guid, (string uniqueProjectName, FileInfo fileInfo)> unusedProjects)
+            Dictionary<Guid, (string uniqueProjectName, string nestedProjectPath, FileInfo fileInfo)> unusedProjects)
         {
             if (!File.Exists(projectFilePath))
             {

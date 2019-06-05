@@ -19,10 +19,10 @@ namespace ProjectRemover.Package {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Strings {
+    public class Strings {
         
         private static global::System.Resources.ResourceManager resourceMan;
         
@@ -36,7 +36,7 @@ namespace ProjectRemover.Package {
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Resources.ResourceManager ResourceManager {
+        public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
                     global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("ProjectRemover.Package.Strings", typeof(Strings).Assembly);
@@ -51,7 +51,7 @@ namespace ProjectRemover.Package {
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Globalization.CultureInfo Culture {
+        public static global::System.Globalization.CultureInfo Culture {
             get {
                 return resourceCulture;
             }
@@ -63,16 +63,25 @@ namespace ProjectRemover.Package {
         /// <summary>
         ///   Looks up a localized string similar to -------- Error --------.
         /// </summary>
-        internal static string error {
+        public static string error {
             get {
                 return ResourceManager.GetString("error", resourceCulture);
             }
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The operation was canceled by the user..
+        /// </summary>
+        public static string info_CanceledByUser {
+            get {
+                return ResourceManager.GetString("info_CanceledByUser", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to -------- Finished Project Remover --------.
         /// </summary>
-        internal static string info_FinishedProjectRemover {
+        public static string info_FinishedProjectRemover {
             get {
                 return ResourceManager.GetString("info_FinishedProjectRemover", resourceCulture);
             }
@@ -81,7 +90,7 @@ namespace ProjectRemover.Package {
         /// <summary>
         ///   Looks up a localized string similar to No unused project found..
         /// </summary>
-        internal static string info_NoUnusedProjectFound {
+        public static string info_NoUnusedProjectFound {
             get {
                 return ResourceManager.GetString("info_NoUnusedProjectFound", resourceCulture);
             }
@@ -90,7 +99,7 @@ namespace ProjectRemover.Package {
         /// <summary>
         ///   Looks up a localized string similar to Successfully removed {0} Projects:{1}.
         /// </summary>
-        internal static string info_RemovedProjects {
+        public static string info_RemovedProjects {
             get {
                 return ResourceManager.GetString("info_RemovedProjects", resourceCulture);
             }
@@ -99,16 +108,43 @@ namespace ProjectRemover.Package {
         /// <summary>
         ///   Looks up a localized string similar to -------- Starting Project Remover --------.
         /// </summary>
-        internal static string info_StartingProjectRemover {
+        public static string info_StartingProjectRemover {
             get {
                 return ResourceManager.GetString("info_StartingProjectRemover", resourceCulture);
             }
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        public static string txt_Cancel {
+            get {
+                return ResourceManager.GetString("txt_Cancel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string txt_Remove {
+            get {
+                return ResourceManager.GetString("txt_Remove", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Select the projects which should be removed.
+        /// </summary>
+        public static string txt_SelectProjects {
+            get {
+                return ResourceManager.GetString("txt_SelectProjects", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to -------- Warning --------.
         /// </summary>
-        internal static string warning {
+        public static string warning {
             get {
                 return ResourceManager.GetString("warning", resourceCulture);
             }
@@ -117,7 +153,7 @@ namespace ProjectRemover.Package {
         /// <summary>
         ///   Looks up a localized string similar to Could not delete the project [{0}] from the GlobalSection(TeamFoundationVersionControl) in the solution file..
         /// </summary>
-        internal static string warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection {
+        public static string warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection {
             get {
                 return ResourceManager.GetString("warning_CouldNotDeleteProjectFromTeamFoundationVersionControlSection", resourceCulture);
             }
@@ -126,7 +162,7 @@ namespace ProjectRemover.Package {
         /// <summary>
         ///   Looks up a localized string similar to  Cannot remove Projects while building..
         /// </summary>
-        internal static string warning_RemoveProjectsWhileBuilding {
+        public static string warning_RemoveProjectsWhileBuilding {
             get {
                 return ResourceManager.GetString("warning_RemoveProjectsWhileBuilding", resourceCulture);
             }
