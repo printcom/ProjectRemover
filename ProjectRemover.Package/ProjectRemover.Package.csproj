@@ -114,6 +114,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="MahApps.Metro">
+      <Version>2.0.0-alpha0316</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Shell.15.0">
       <Version>16.1.28917.181</Version>
     </PackageReference>
